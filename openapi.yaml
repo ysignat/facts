@@ -1,0 +1,176 @@
+openapi: "3.0.3"
+info:
+  title: Facts
+  version: "0.1.0"
+  license:
+    name: MIT
+    url: https://opensource.org/license/mit
+  contact:
+    email: ignatovegors@gmail.com
+    name: ysignat
+
+servers:
+  - url: http://localhost:8080/api
+    description: Local development server
+
+components:
+  schemas:
+    Page:
+      type: integer
+      minimum: 1
+      default: 1
+      example: 1
+      description: Common type for page number in pagination
+
+    Limit:
+      type: integer
+      minimum: 1
+      maximum: 50
+      default: 10
+      example: 10
+      description: Common type for items limit in pagination
+
+    FactId:
+      type: integer
+      minimum: 1
+      example: 1
+      description: Unique identifier of a fact
+
+    FactTitle:
+      type: string
+      minLength: 1
+      maxLength: 64
+      description: Short fact title
+      example: About smoking
+
+    FactBody:
+      type: string
+      minLength: 1
+      maxLength: 2048
+      description: Fact content
+      example: >-
+        The phrase "smoking kills" is a direct statement about the severe health risks of tobacco use
+
+        Smoking is a leading cause of preventable death globally, leading to cancer, heart disease, stroke, and lung diseases like emphysema
+
+    Fact:
+      type: object
+      description: Full fact object
+      properties:
+        id:
+          $ref: "#/components/schemas/FactId"
+        title:
+          $ref: "#/components/schemas/FactTitle"
+        body:
+          $ref: "#/components/schemas/FactBody"
+
+    FactsList:
+      type: array
+      items:
+        $ref: "#/components/schemas/Fact"
+
+  headers:
+    PaginationPage:
+      schema:
+        $ref: "#/components/schemas/Page"
+    PaginationLimit:
+      schema:
+        $ref: "#/components/schemas/Limit"
+
+paths:
+  # /facts:
+  #   get: # TODO: admin
+  #     parameters:
+  #       - name: pagination-page
+  #         in: header
+  #         required: false
+  #         schema:
+  #           $ref: "#/components/schemas/Page"
+  #       - name: pagination-limit
+  #         in: header
+  #         required: false
+  #         schema:
+  #           $ref: "#/components/schemas/Limit"
+  #     description: List all the facts with pagination
+  #     responses:
+  #       "200":
+  #         description: OK
+  #         content:
+  #           "application/json":
+  #             schema:
+  #               $ref: "#/components/schemas/FactsList"
+  #         headers:
+  #           pagination-page:
+  #             $ref: "#/components/headers/PaginationPage"
+  #           pagination-limit:
+  #             $ref: "#/components/headers/PaginationLimit"
+  #       "400":
+  #         description: Bad Request
+  #       "403":
+  #         description: Forbidden
+  #       "422":
+  #         description: Unprocessable Content
+  #       "429":
+  #         description: Too Many Requests
+  #       "500":
+  #         description: Internal Server Error
+  #       "502":
+  #         description: Bad Gateway
+  #       "503":
+  #         description: Service Unavailable
+  #       "504":
+  #         description: Gateway Timeout
+  #   post: # TODO: admin
+  #     responses:
+  #       "200":
+  #         description: OK
+  /facts/random:
+    get:
+      responses:
+        "200":
+          description: OK
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/Fact"
+        "429":
+          description: Too Many Requests
+        "500":
+          description: Internal Server Error
+        "502":
+          description: Bad Gateway
+        "503":
+          description: Service Unavailable
+        "504":
+          description: Gateway Timeout
+  /facts/{id}:
+    get:
+      responses:
+        "200":
+          description: OK
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/Fact"
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "429":
+          description: Too Many Requests
+        "500":
+          description: Internal Server Error
+        "502":
+          description: Bad Gateway
+        "503":
+          description: Service Unavailable
+        "504":
+          description: Gateway Timeout
+    # put: # TODO: admin
+    #   responses:
+    #     "200":
+    #       description: OK
+    # delete: # TODO: admin
+    #   responses:
+    #     "200":
+    #       description: OK
