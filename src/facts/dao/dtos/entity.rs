@@ -5,7 +5,8 @@ use thiserror::Error;
 #[derive(Clone)]
 #[cfg_attr(test, derive(Dummy, Eq, PartialEq, Debug))]
 pub struct Entity {
-    id: u64,
+    #[cfg_attr(test, dummy(faker = "(1..i64::MAX)"))]
+    id: i64,
     #[cfg_attr(test, dummy(faker = "Sentence(2..3)"))]
     title: String,
     #[cfg_attr(test, dummy(faker = "Sentence(5..10)"))]
@@ -13,7 +14,7 @@ pub struct Entity {
 }
 
 impl Entity {
-    pub fn id(&self) -> u64 {
+    pub fn id(&self) -> i64 {
         self.id
     }
 
@@ -29,7 +30,7 @@ impl Entity {
 #[derive(Default)]
 #[cfg_attr(test, derive(Debug))]
 pub struct Builder {
-    id: Option<u64>,
+    id: Option<i64>,
     title: Option<String>,
     body: Option<String>,
 }
@@ -63,7 +64,7 @@ impl Builder {
         Self::default()
     }
 
-    pub fn id(mut self, id: u64) -> Self {
+    pub fn id(mut self, id: i64) -> Self {
         self.id = Some(id);
         self
     }
@@ -156,19 +157,20 @@ mod tests {
     }
 
     #[test]
-    fn id_equals_zero() {
+    fn id_less_or_equals_zero() {
+        let id = (i64::MIN..=0).fake();
         let title = Sentence(2..3).fake();
         let body = Sentence(5..10).fake();
 
         let builder = Builder::default();
-        let builder_err = builder.id(0).title(title).body(body).build();
+        let builder_err = builder.id(id).title(title).body(body).build();
 
         assert_eq!(builder_err, Err(BuilderError::IdLessOrEqualsZero));
     }
 
     #[test]
     fn empty_title() {
-        let id = Faker.fake();
+        let id = (1..i64::MAX).fake();
         let body = Sentence(5..10).fake();
 
         let builder = Builder::default();
@@ -179,7 +181,7 @@ mod tests {
 
     #[test]
     fn empty_body() {
-        let id = Faker.fake();
+        let id = (1..i64::MAX).fake();
         let title = Sentence(2..3).fake();
 
         let builder = Builder::default();
@@ -190,7 +192,7 @@ mod tests {
 
     #[test]
     fn long_title() {
-        let id = Faker.fake();
+        let id = (1..i64::MAX).fake();
         let title =
             ((Builder::MAX_TITLE_LENGTH + 1)..(Builder::MAX_TITLE_LENGTH * 2)).fake::<String>();
         let title_length = title.len();
@@ -209,7 +211,7 @@ mod tests {
 
     #[test]
     fn long_body() {
-        let id = Faker.fake();
+        let id = (1..i64::MAX).fake();
         let title = Sentence(2..3).fake();
         let body =
             ((Builder::MAX_BODY_LENGTH + 1)..(Builder::MAX_BODY_LENGTH * 2)).fake::<String>();
@@ -228,7 +230,7 @@ mod tests {
 
     #[test]
     fn all_good() {
-        let id = Faker.fake();
+        let id = (1..i64::MAX).fake();
         let title = Sentence(2..3).fake();
         let body = Sentence(5..10).fake();
 

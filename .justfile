@@ -1,8 +1,13 @@
 set export := true
 set dotenv-load := true
 
-CONTAINER_NAME := 'api'
-NETWORK_NAME := 'app-network'
+PORT := '8080'
+POSTGRES_PORT := '5432'
+POSTGRES_USER := 'postgres'
+POSTGRES_PASSWORD := 'postgres'
+DATABASE_EXTERNAL_DSN := 'postgres://' + POSTGRES_USER + ':' + POSTGRES_PASSWORD + '@localhost:' + POSTGRES_PORT
+DATABASE_INTERNAL_DSN := 'postgres://' + POSTGRES_USER + ':' + POSTGRES_PASSWORD + '@postgres:' + POSTGRES_PORT
+MIGRATIONS_PATH := "./src/facts/migrations"
 
 default:
   @just --list
@@ -11,48 +16,32 @@ start:
   #!/usr/bin/env sh
   set -eu
 
-  docker network create \
-    --driver bridge \
-    "${NETWORK_NAME}"
+  export RUST_VERSION="$(grep 'rust-version' Cargo.toml | sed 's/rust-version = \"\(.*\)\"/\1/')"
 
-  WORKDIR='/app'
-  RUST_VERSION="$(grep 'rust-version' Cargo.toml | sed 's/rust-version = \"\(.*\)\"/\1/')"
-  ALPINE_VERSION='3.21'
-  PORT='8080'
-  TAG="$(
-    docker build \
-      --quiet \
-      --file dev.dockerfile \
-      --build-arg "RUST_VERSION=${RUST_VERSION}" \
-      --build-arg "ALPINE_VERSION=${ALPINE_VERSION}" \
-      .
-  )"
-  docker run \
-    --rm \
+  printf '[*] Starting infrastructure\n'
+  docker-compose up \
     --detach \
-    --user "$(id -u):$(id -g)" \
-    --volume "${PWD}:${WORKDIR}" \
-    --publish "${PORT}:${PORT}" \
-    --workdir "${WORKDIR}" \
-    --name "${CONTAINER_NAME}" \
-    --network "${NETWORK_NAME}" \
-    --env "HOST=0.0.0.0" \
-    --env "PORT=${PORT}" \
-    --env "LOG_LEVEL=TRACE" \
-    "${TAG}"
+    --wait \
+    --remove-orphans \
+    postgres
+
+  docker-compose run \
+    --build \
+    --remove-orphans \
+    --rm \
+    migrations
+
+  printf '[*] Starting app\n'
+  cargo run -- \
+    --log-level 'trace' \
+    --bind-port "${PORT}" \
+    --database-dsn "${DATABASE_EXTERNAL_DSN}"
 
 stop:
   #!/usr/bin/env sh
   set -eu
 
-  docker container rm \
-    --force \
-    --volumes \
-    "${CONTAINER_NAME}"
-
-  docker network rm \
-    --force \
-    "${NETWORK_NAME}" 
+  docker-compose down
 
 restart:
   just stop

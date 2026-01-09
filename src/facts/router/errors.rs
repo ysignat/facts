@@ -20,6 +20,7 @@ impl From<GetError> for AppError {
     fn from(value: GetError) -> Self {
         let status_code = match value {
             GetError::NoSuchEntity { id: _ } => StatusCode::NOT_FOUND,
+            GetError::UnexpectedError { inner: _ } => StatusCode::INTERNAL_SERVER_ERROR,
         };
 
         Self {
@@ -33,6 +34,7 @@ impl From<GetRandomError> for AppError {
     fn from(value: GetRandomError) -> Self {
         let status_code = match value {
             GetRandomError::Empty => StatusCode::NOT_FOUND,
+            GetRandomError::UnexpectedError { inner: _ } => StatusCode::INTERNAL_SERVER_ERROR,
         };
 
         Self {

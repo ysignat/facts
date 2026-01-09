@@ -15,21 +15,25 @@ Smoking is a leading cause of preventable death globally, leading to cancer, hea
 
 #[async_trait]
 impl Dao for MockedDao {
-    async fn get(&self, id: u64) -> Result<Entity, GetError> {
-        Ok(Builder::new()
+    async fn get(&self, id: i64) -> Result<Entity, GetError> {
+        Builder::new()
             .id(id)
             .title(TITLE.to_owned())
             .body(BODY.to_owned())
             .build()
-            .unwrap())
+            .map_err(|err| GetError::UnexpectedError {
+                inner: err.to_string(),
+            })
     }
 
     async fn get_random(&self) -> Result<Entity, GetRandomError> {
-        Ok(Builder::new()
+        Builder::new()
             .id(42)
             .title(TITLE.to_owned())
             .body(BODY.to_owned())
             .build()
-            .unwrap())
+            .map_err(|err| GetRandomError::UnexpectedError {
+                inner: err.to_string(),
+            })
     }
 }

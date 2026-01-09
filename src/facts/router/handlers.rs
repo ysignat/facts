@@ -15,7 +15,7 @@ pub struct AppRouter {}
 
 #[debug_handler]
 pub async fn get_fact(
-    Path(id): Path<u64>,
+    Path(id): Path<i64>,
     State(state): State<AppState>,
 ) -> Result<impl IntoResponse, AppError> {
     let result: HttpEntity = state.dao.get(id).await?.into();
@@ -50,35 +50,55 @@ impl From<AppRouter> for Router<AppState> {
 
 #[cfg(test)]
 mod tests {
-    use std::{collections::HashMap, sync::Arc};
+    use std::sync::Arc;
 
     use axum::{body::Body, http::Request};
     use fake::{Fake, Faker};
     use http_body_util::BodyExt;
     use reqwest::Method;
     use serde_json::from_slice;
+    use sqlx::{
+        any::{install_default_drivers, AnyPoolOptions},
+        migrate::Migrator,
+        query,
+        AnyPool,
+    };
     use tower::ServiceExt;
 
     use super::*;
-    use crate::facts::dao::{Entity, HashMapDao};
+    use crate::facts::{dao::Entity, SqlxDao};
 
-    impl Default for AppState {
-        fn default() -> Self {
-            Self {
-                dao: Arc::new(HashMapDao::new(HashMap::new())),
-            }
-        }
+    static MIGRATOR: Migrator = sqlx::migrate!("./src/facts/migrations");
+
+    async fn setup() -> AnyPool {
+        install_default_drivers();
+        let pool = AnyPoolOptions::new()
+            .max_connections(1)
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+
+        MIGRATOR.run(&pool).await.unwrap();
+
+        pool
     }
 
     #[tokio::test]
     async fn get_ok() {
         let router: Router<AppState> = AppRouter::default().into();
         let entity = Faker.fake::<Entity>();
+        let pool = setup().await;
 
-        let predefined_dao = HashMapDao::new(HashMap::from_iter([(entity.id(), entity.clone())]));
+        query("INSERT INTO facts (id, title, body) VALUES ($1, $2, $3)")
+            .bind(entity.id())
+            .bind(entity.title())
+            .bind(entity.body())
+            .execute(&pool)
+            .await
+            .unwrap();
 
         let state = AppState {
-            dao: Arc::new(predefined_dao),
+            dao: Arc::new(SqlxDao::new(pool)),
         };
 
         let raw_response = router
@@ -98,7 +118,6 @@ mod tests {
         let response =
             from_slice::<HttpEntity>(&raw_response.into_body().collect().await.unwrap().to_bytes())
                 .unwrap();
-        println!("{response:#?}");
 
         assert_eq!(entity.id(), response.id());
         assert_eq!(entity.title(), response.title());
@@ -108,10 +127,15 @@ mod tests {
     #[tokio::test]
     async fn get_non_existent() {
         let router: Router<AppState> = AppRouter::default().into();
-        let id: u64 = Faker.fake();
+        let id: i64 = Faker.fake();
+        let pool = setup().await;
+
+        let state = AppState {
+            dao: Arc::new(SqlxDao::new(pool)),
+        };
 
         let raw_response = router
-            .with_state(AppState::default())
+            .with_state(state)
             .oneshot(
                 Request::builder()
                     .method(Method::GET)
@@ -128,17 +152,22 @@ mod tests {
     #[tokio::test]
     async fn get_random() {
         let router: Router<AppState> = AppRouter::default().into();
-        let mut map = HashMap::new();
+        let pool = setup().await;
 
         for _ in 0..10 {
             let entity = Faker.fake::<Entity>();
-            map.insert(entity.id(), entity);
+
+            query("INSERT INTO facts (id, title, body) VALUES ($1, $2, $3)")
+                .bind(entity.id())
+                .bind(entity.title())
+                .bind(entity.body())
+                .execute(&pool)
+                .await
+                .unwrap();
         }
 
-        let predefined_dao = HashMapDao::new(map);
-
         let state = AppState {
-            dao: Arc::new(predefined_dao),
+            dao: Arc::new(SqlxDao::new(pool)),
         };
 
         let raw_response = router
@@ -162,9 +191,14 @@ mod tests {
     #[tokio::test]
     async fn get_random_from_empty() {
         let router: Router<AppState> = AppRouter::default().into();
+        let pool = setup().await;
+
+        let state = AppState {
+            dao: Arc::new(SqlxDao::new(pool)),
+        };
 
         let raw_response = router
-            .with_state(AppState::default())
+            .with_state(state)
             .oneshot(
                 Request::builder()
                     .method(Method::GET)
@@ -181,17 +215,19 @@ mod tests {
     #[tokio::test]
     async fn healthcheck() {
         let router: Router<AppState> = AppRouter::default().into();
-        let mut map = HashMap::new();
+        let pool = setup().await;
+        let entity = Faker.fake::<Entity>();
 
-        for _ in 0..10 {
-            let entity = Faker.fake::<Entity>();
-            map.insert(entity.id(), entity);
-        }
-
-        let predefined_dao = HashMapDao::new(map);
+        query("INSERT INTO facts (id, title, body) VALUES ($1, $2, $3);")
+            .bind(entity.id())
+            .bind(entity.title())
+            .bind(entity.body())
+            .execute(&pool)
+            .await
+            .unwrap();
 
         let state = AppState {
-            dao: Arc::new(predefined_dao),
+            dao: Arc::new(SqlxDao::new(pool)),
         };
 
         let raw_response = router

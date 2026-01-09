@@ -43,11 +43,13 @@ pub enum LogFormat {
 pub enum DaoType {
     Mocked,
     #[default]
-    HashMap,
+    Sqlx,
 }
 
 #[derive(Args, Clone, Debug)]
 pub struct Dao {
     #[arg(long, env, default_value_t, value_enum)]
     pub dao_type: DaoType,
+    #[arg(long, env, default_value = "sqlite://data/sqlite.db", value_enum)]
+    pub database_dsn: String,
 }

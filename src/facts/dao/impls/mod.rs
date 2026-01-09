@@ -1,5 +1,5 @@
-pub use hash_map::HashMapDao;
 pub use mocked::MockedDao;
+pub use sqlx::SqlxDao;
 
-mod hash_map;
 mod mocked;
+mod sqlx;

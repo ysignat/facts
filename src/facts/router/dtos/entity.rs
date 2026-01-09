@@ -7,14 +7,14 @@ use crate::facts::dao::Entity;
 #[derive(Debug, Serialize)]
 #[cfg_attr(test, derive(Deserialize, PartialEq, Eq))]
 pub struct HttpEntity {
-    id: u64,
+    id: i64,
     title: String,
     body: String,
 }
 
 #[cfg(test)]
 impl HttpEntity {
-    pub fn id(&self) -> u64 {
+    pub fn id(&self) -> i64 {
         self.id
     }
 

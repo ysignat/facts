@@ -1,9 +1,10 @@
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use axum::{response::Html, routing::get, Router};
 use clap::Parser;
 use config::{Config, DaoType, LogFormat};
-use facts::{AppRouter, AppState, HashMapDao, MockedDao};
+use facts::{AppRouter, AppState, MockedDao, SqlxDao};
+use sqlx::any::{install_default_drivers, AnyPoolOptions};
 use tokio::net::TcpListener;
 use tower_http::trace::TraceLayer;
 use tracing::{error, info};
@@ -27,7 +28,7 @@ async fn main() {
 
     info!(
         target : TRACING_STARTUP_TARGET,
-        "Tracing subscriber started with log level {} and {:?} log format", args.logging.log_level, args.logging.log_format,
+        "Tracing subscriber started with log level {:?} and {:?} log format", args.logging.log_level.to_string(), args.logging.log_format,
     );
 
     let bind_address = format!("{}:{}", args.runtime.bind_host, args.runtime.bind_port);
@@ -36,13 +37,13 @@ async fn main() {
         .inspect_err(|err| {
             error!(
                 target : TRACING_STARTUP_TARGET,
-                "Cannot bind to {bind_address}: {err}"
+                "Cannot bind to {bind_address:?}: {err:?}"
             );
         })
         .unwrap();
     info!(
         target : TRACING_STARTUP_TARGET,
-        "Created listener at {bind_address}"
+        "Created listener at {bind_address:?}"
     );
 
     let state = AppState {
@@ -51,9 +52,25 @@ async fn main() {
                 info!(target : TRACING_STARTUP_TARGET, "Using MockedDao");
                 Arc::new(MockedDao {})
             }
-            DaoType::HashMap => {
-                info!(target : TRACING_STARTUP_TARGET, "Using HashMapDao");
-                Arc::new(HashMapDao::new(HashMap::new()))
+            DaoType::Sqlx => {
+                info!(target : TRACING_STARTUP_TARGET, "Using SqlxDao");
+
+                info!(target : TRACING_STARTUP_TARGET, "Installing drivers");
+                install_default_drivers();
+
+                info!(target : TRACING_STARTUP_TARGET, "Creating pool for {:?}", &args.dao.database_dsn);
+                let pool = AnyPoolOptions::default()
+                    .connect(&args.dao.database_dsn)
+                    .await
+                    .inspect_err(|err| {
+                        error!(
+                            target : TRACING_STARTUP_TARGET,
+                            "Cannot acquire pool: {err:?}"
+                        );
+                    })
+                    .unwrap();
+
+                Arc::new(SqlxDao::new(pool))
             }
         },
     };
