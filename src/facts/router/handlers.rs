@@ -15,24 +15,24 @@ pub struct AppRouter {}
 
 #[debug_handler]
 pub async fn get_fact(
-    Path(id): Path<i64>,
+    Path(id): Path<i32>,
     State(state): State<AppState>,
 ) -> Result<impl IntoResponse, AppError> {
-    let result: HttpEntity = state.dao.get(id).await?.into();
+    let result: HttpEntity = state.facts.get(id).await?.into();
 
     Ok((StatusCode::OK, Json(result)))
 }
 
 #[debug_handler]
 pub async fn get_random_fact(State(state): State<AppState>) -> Result<impl IntoResponse, AppError> {
-    let result: HttpEntity = state.dao.get_random().await?.into();
+    let result: HttpEntity = state.facts.get_random().await?.into();
 
     Ok((StatusCode::OK, Json(result)))
 }
 
 #[debug_handler]
 pub async fn health(State(state): State<AppState>) -> Result<impl IntoResponse, AppError> {
-    if state.dao.get_random().await.is_ok() {
+    if state.facts.get_random().await.is_ok() {
         Ok((StatusCode::OK, Json("Healthy")))
     } else {
         Ok((StatusCode::SERVICE_UNAVAILABLE, Json("Unhealthy")))
@@ -66,7 +66,7 @@ mod tests {
     use tower::ServiceExt;
 
     use super::*;
-    use crate::facts::{dao::Entity, SqlxDao};
+    use crate::facts::{repository::Fact, SqlxFactsRepository};
 
     static MIGRATOR: Migrator = sqlx::migrate!("./src/facts/migrations");
 
@@ -86,19 +86,19 @@ mod tests {
     #[tokio::test]
     async fn get_ok() {
         let router: Router<AppState> = AppRouter::default().into();
-        let entity = Faker.fake::<Entity>();
+        let entity = Faker.fake::<Fact>();
         let pool = setup().await;
 
         query("INSERT INTO facts (id, title, body) VALUES ($1, $2, $3)")
-            .bind(entity.id())
-            .bind(entity.title())
-            .bind(entity.body())
+            .bind(Into::<i32>::into(entity.id()))
+            .bind(Into::<String>::into(entity.title().to_owned()))
+            .bind(Into::<String>::into(entity.body().to_owned()))
             .execute(&pool)
             .await
             .unwrap();
 
         let state = AppState {
-            dao: Arc::new(SqlxDao::new(pool)),
+            facts: Arc::new(SqlxFactsRepository::new(pool)),
         };
 
         let raw_response = router
@@ -119,19 +119,20 @@ mod tests {
             from_slice::<HttpEntity>(&raw_response.into_body().collect().await.unwrap().to_bytes())
                 .unwrap();
 
-        assert_eq!(entity.id(), response.id());
-        assert_eq!(entity.title(), response.title());
-        assert_eq!(entity.body(), response.body());
+        assert_eq!(
+            entity,
+            Fact::new(response.id(), response.title(), response.body()).unwrap()
+        );
     }
 
     #[tokio::test]
     async fn get_non_existent() {
         let router: Router<AppState> = AppRouter::default().into();
-        let id: i64 = Faker.fake();
+        let id: i32 = Faker.fake();
         let pool = setup().await;
 
         let state = AppState {
-            dao: Arc::new(SqlxDao::new(pool)),
+            facts: Arc::new(SqlxFactsRepository::new(pool)),
         };
 
         let raw_response = router
@@ -155,19 +156,19 @@ mod tests {
         let pool = setup().await;
 
         for _ in 0..10 {
-            let entity = Faker.fake::<Entity>();
+            let entity = Faker.fake::<Fact>();
 
             query("INSERT INTO facts (id, title, body) VALUES ($1, $2, $3)")
-                .bind(entity.id())
-                .bind(entity.title())
-                .bind(entity.body())
+                .bind(Into::<i32>::into(entity.id()))
+                .bind(Into::<String>::into(entity.title().to_owned()))
+                .bind(Into::<String>::into(entity.body().to_owned()))
                 .execute(&pool)
                 .await
                 .unwrap();
         }
 
         let state = AppState {
-            dao: Arc::new(SqlxDao::new(pool)),
+            facts: Arc::new(SqlxFactsRepository::new(pool)),
         };
 
         let raw_response = router
@@ -194,7 +195,7 @@ mod tests {
         let pool = setup().await;
 
         let state = AppState {
-            dao: Arc::new(SqlxDao::new(pool)),
+            facts: Arc::new(SqlxFactsRepository::new(pool)),
         };
 
         let raw_response = router
@@ -216,18 +217,18 @@ mod tests {
     async fn healthcheck() {
         let router: Router<AppState> = AppRouter::default().into();
         let pool = setup().await;
-        let entity = Faker.fake::<Entity>();
+        let entity = Faker.fake::<Fact>();
 
         query("INSERT INTO facts (id, title, body) VALUES ($1, $2, $3);")
-            .bind(entity.id())
-            .bind(entity.title())
-            .bind(entity.body())
+            .bind(Into::<i32>::into(entity.id()))
+            .bind(Into::<String>::into(entity.title().to_owned()))
+            .bind(Into::<String>::into(entity.body().to_owned()))
             .execute(&pool)
             .await
             .unwrap();
 
         let state = AppState {
-            dao: Arc::new(SqlxDao::new(pool)),
+            facts: Arc::new(SqlxFactsRepository::new(pool)),
         };
 
         let raw_response = router

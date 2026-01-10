@@ -2,16 +2,16 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 #[cfg_attr(test, derive(PartialEq))]
-pub enum GetError {
+pub enum GetFactError {
     #[error("Entity with id '{id:?}' doesn't exist in our records")]
-    NoSuchEntity { id: i64 },
+    NoSuchEntity { id: i32 },
     #[error("Something weird occured while retrieving the entity: {inner}")]
     UnexpectedError { inner: String },
 }
 
 #[derive(Error, Debug)]
 #[cfg_attr(test, derive(PartialEq))]
-pub enum GetRandomError {
+pub enum GetRandomFactError {
     #[error("Collection is empty, nothing to choose")]
     Empty,
     #[error("Something weird occured while retrieving the entity: {inner}")]

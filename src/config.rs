@@ -12,7 +12,7 @@ pub struct Config {
     #[command(flatten)]
     pub logging: Logging,
     #[command(flatten)]
-    pub dao: Dao,
+    pub storage: Storage,
 }
 
 #[derive(Args, Clone, Debug)]
@@ -40,16 +40,16 @@ pub enum LogFormat {
 }
 
 #[derive(Clone, ValueEnum, Default, Debug)]
-pub enum DaoType {
+pub enum StorageType {
     Mocked,
     #[default]
     Sqlx,
 }
 
 #[derive(Args, Clone, Debug)]
-pub struct Dao {
+pub struct Storage {
     #[arg(long, env, default_value_t, value_enum)]
-    pub dao_type: DaoType,
+    pub storage_type: StorageType,
     #[arg(long, env, default_value = "sqlite://data/sqlite.db", value_enum)]
-    pub database_dsn: String,
+    pub storage_dsn: String,
 }

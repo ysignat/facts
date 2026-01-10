@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use axum::{response::Html, routing::get, Router};
 use clap::Parser;
-use config::{Config, DaoType, LogFormat};
-use facts::{AppRouter, AppState, MockedDao, SqlxDao};
+use config::{Config, LogFormat, StorageType};
+use facts::{AppRouter, AppState, MockedFactsRepository, SqlxFactsRepository};
 use sqlx::any::{install_default_drivers, AnyPoolOptions};
 use tokio::net::TcpListener;
 use tower_http::trace::TraceLayer;
@@ -47,20 +47,20 @@ async fn main() {
     );
 
     let state = AppState {
-        dao: match args.dao.dao_type {
-            DaoType::Mocked => {
-                info!(target : TRACING_STARTUP_TARGET, "Using MockedDao");
-                Arc::new(MockedDao {})
+        facts: match args.storage.storage_type {
+            StorageType::Mocked => {
+                info!(target : TRACING_STARTUP_TARGET, "Using MockedRepository");
+                Arc::new(MockedFactsRepository {})
             }
-            DaoType::Sqlx => {
-                info!(target : TRACING_STARTUP_TARGET, "Using SqlxDao");
+            StorageType::Sqlx => {
+                info!(target : TRACING_STARTUP_TARGET, "Using SqlxRepository");
 
                 info!(target : TRACING_STARTUP_TARGET, "Installing drivers");
                 install_default_drivers();
 
-                info!(target : TRACING_STARTUP_TARGET, "Creating pool for {:?}", &args.dao.database_dsn);
+                info!(target : TRACING_STARTUP_TARGET, "Creating pool for {:?}", &args.storage.storage_dsn);
                 let pool = AnyPoolOptions::default()
-                    .connect(&args.dao.database_dsn)
+                    .connect(&args.storage.storage_dsn)
                     .await
                     .inspect_err(|err| {
                         error!(
@@ -70,7 +70,7 @@ async fn main() {
                     })
                     .unwrap();
 
-                Arc::new(SqlxDao::new(pool))
+                Arc::new(SqlxFactsRepository::new(pool))
             }
         },
     };

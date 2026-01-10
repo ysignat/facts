@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use crate::facts::dao::Dao;
+use crate::facts::repository::FactsRepository;
 
 #[derive(Clone)]
 pub struct AppState {
-    pub dao: Arc<dyn Dao>,
+    pub facts: Arc<dyn FactsRepository>,
 }

@@ -3,7 +3,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 
-use crate::facts::dao::{GetError, GetRandomError};
+use crate::facts::repository::{GetFactError, GetRandomFactError};
 
 pub struct AppError {
     pub status_code: StatusCode,
@@ -16,11 +16,11 @@ impl IntoResponse for AppError {
     }
 }
 
-impl From<GetError> for AppError {
-    fn from(value: GetError) -> Self {
+impl From<GetFactError> for AppError {
+    fn from(value: GetFactError) -> Self {
         let status_code = match value {
-            GetError::NoSuchEntity { id: _ } => StatusCode::NOT_FOUND,
-            GetError::UnexpectedError { inner: _ } => StatusCode::INTERNAL_SERVER_ERROR,
+            GetFactError::NoSuchEntity { id: _ } => StatusCode::NOT_FOUND,
+            GetFactError::UnexpectedError { inner: _ } => StatusCode::INTERNAL_SERVER_ERROR,
         };
 
         Self {
@@ -30,11 +30,11 @@ impl From<GetError> for AppError {
     }
 }
 
-impl From<GetRandomError> for AppError {
-    fn from(value: GetRandomError) -> Self {
+impl From<GetRandomFactError> for AppError {
+    fn from(value: GetRandomFactError) -> Self {
         let status_code = match value {
-            GetRandomError::Empty => StatusCode::NOT_FOUND,
-            GetRandomError::UnexpectedError { inner: _ } => StatusCode::INTERNAL_SERVER_ERROR,
+            GetRandomFactError::Empty => StatusCode::NOT_FOUND,
+            GetRandomFactError::UnexpectedError { inner: _ } => StatusCode::INTERNAL_SERVER_ERROR,
         };
 
         Self {

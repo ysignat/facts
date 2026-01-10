@@ -2,19 +2,19 @@
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::facts::dao::Entity;
+use crate::facts::repository::Fact;
 
 #[derive(Debug, Serialize)]
 #[cfg_attr(test, derive(Deserialize, PartialEq, Eq))]
 pub struct HttpEntity {
-    id: i64,
+    id: i32,
     title: String,
     body: String,
 }
 
 #[cfg(test)]
 impl HttpEntity {
-    pub fn id(&self) -> i64 {
+    pub fn id(&self) -> i32 {
         self.id
     }
 
@@ -27,12 +27,12 @@ impl HttpEntity {
     }
 }
 
-impl From<Entity> for HttpEntity {
-    fn from(value: Entity) -> Self {
+impl From<Fact> for HttpEntity {
+    fn from(value: Fact) -> Self {
         HttpEntity {
-            id: value.id(),
-            title: value.title().to_owned(),
-            body: value.body().to_owned(),
+            id: value.id().into(),
+            title: value.title().to_owned().into(),
+            body: value.body().to_owned().into(),
         }
     }
 }

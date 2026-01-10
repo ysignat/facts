@@ -35,7 +35,7 @@ start:
   cargo run -- \
     --log-level 'trace' \
     --bind-port "${PORT}" \
-    --database-dsn "${DATABASE_EXTERNAL_DSN}"
+    --storage-dsn "${DATABASE_EXTERNAL_DSN}"
 
 stop:
   #!/usr/bin/env sh
