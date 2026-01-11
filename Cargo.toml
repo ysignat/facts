@@ -32,12 +32,7 @@ tracing-subscriber = { version = "0.3.22", features = ["json"] }
 thiserror = "2.0.17"
 rand = "0.9.2"
 async-trait = "0.1.89"
-sqlx = { version = "0.8.6", features = [
-  "runtime-tokio-rustls",
-  "postgres",
-  "sqlite",
-  "any",
-] }
+sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "postgres"] }
 
 [dev-dependencies]
 fake = { version = "4.3.0", features = ["derive", "dummy"] }

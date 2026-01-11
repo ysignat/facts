@@ -8,17 +8,12 @@ POSTGRES_PASSWORD := 'postgres'
 DATABASE_EXTERNAL_DSN := 'postgres://' + POSTGRES_USER + ':' + POSTGRES_PASSWORD + '@localhost:' + POSTGRES_PORT
 DATABASE_INTERNAL_DSN := 'postgres://' + POSTGRES_USER + ':' + POSTGRES_PASSWORD + '@postgres:' + POSTGRES_PORT
 MIGRATIONS_PATH := "./src/facts/migrations"
+RUST_VERSION := `grep 'rust-version' Cargo.toml | sed 's/rust-version = \"\(.*\)\"/\1/'`
 
 default:
-  @just --list
+  @just --list  
 
-start:
-  #!/usr/bin/env sh
-  set -eu
-
-  export RUST_VERSION="$(grep 'rust-version' Cargo.toml | sed 's/rust-version = \"\(.*\)\"/\1/')"
-
-  printf '[*] Starting infrastructure\n'
+up:
   docker-compose up \
     --detach \
     --wait \
@@ -31,18 +26,32 @@ start:
     --rm \
     migrations
 
-  printf '[*] Starting app\n'
+run:
+  just up
   cargo run -- \
     --log-level 'trace' \
     --bind-port "${PORT}" \
     --storage-dsn "${DATABASE_EXTERNAL_DSN}"
 
-stop:
-  #!/usr/bin/env sh
-  set -eu
-
+down:
   docker-compose down
 
 restart:
-  just stop
-  just start
+  just down
+  just up
+
+test *args:
+  just up
+  cargo test {{ args }}
+  just down
+
+prepare:
+  just up
+  cargo sqlx prepare \
+    --all \
+    --database-url 'postgres://postgres:postgres@localhost:5432' \
+    -- \
+    --all-targets \
+    --all-features \
+    --tests
+  just down

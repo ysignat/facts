@@ -1,0 +1,32 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\nSELECT\n  id, title, body\nFROM facts\nORDER BY random()\nLIMIT 1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "body",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "38864f53d2aa0704a2e55e129f9eb317f0ac4dd4f2cd1a4d03820544022fd53d"
+}

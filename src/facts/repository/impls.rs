@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use sqlx::{query_as, AnyPool, FromRow};
+use sqlx::{query_as, FromRow, PgPool};
 
 use super::{
     errors::{GetFactError, GetRandomFactError},
@@ -31,33 +31,33 @@ impl FactsRepository for MockedFactsRepository {
 
 #[derive(Clone)]
 pub struct SqlxFactsRepository {
-    pool: AnyPool,
+    pool: PgPool,
 }
 
 impl SqlxFactsRepository {
-    pub fn new(pool: AnyPool) -> Self {
+    pub fn new(pool: PgPool) -> Self {
         Self { pool }
     }
 }
 
 #[derive(FromRow)]
-struct SqlxEntity {
+struct SqlxFact {
     id: i32,
     title: String,
     body: String,
 }
 
-impl TryFrom<SqlxEntity> for Fact {
+impl TryFrom<SqlxFact> for Fact {
     type Error = FactError;
 
-    fn try_from(value: SqlxEntity) -> Result<Self, Self::Error> {
+    fn try_from(value: SqlxFact) -> Result<Self, Self::Error> {
         Fact::new(value.id, &value.title, &value.body)
     }
 }
 
-impl From<Fact> for SqlxEntity {
+impl From<Fact> for SqlxFact {
     fn from(val: Fact) -> Self {
-        SqlxEntity {
+        SqlxFact {
             id: val.id().into(),
             title: val.title().to_owned().into(),
             body: val.body().to_owned().into(),
@@ -68,15 +68,16 @@ impl From<Fact> for SqlxEntity {
 #[async_trait]
 impl FactsRepository for SqlxFactsRepository {
     async fn get(&self, id: i32) -> Result<Fact, GetFactError> {
-        let result: SqlxEntity = query_as(
+        let result = query_as!(
+            SqlxFact,
             r"
 SELECT
   id, title, body
 FROM facts
 WHERE id = $1
         ",
+            id
         )
-        .bind(id)
         .fetch_optional(&self.pool)
         .await
         .transpose()
@@ -93,7 +94,8 @@ WHERE id = $1
     }
 
     async fn get_random(&self) -> Result<Fact, GetRandomFactError> {
-        let result: SqlxEntity = query_as(
+        let result = query_as!(
+            SqlxFact,
             r"
 SELECT
   id, title, body
@@ -121,26 +123,21 @@ LIMIT 1
 #[cfg(test)]
 mod tests {
     use fake::{Fake, Faker};
-    use sqlx::{
-        any::{install_default_drivers, AnyPoolOptions},
-        migrate::Migrator,
-        query,
-        AnyPool,
-    };
+    use sqlx::{migrate::Migrator, postgres::PgPoolOptions, query, query_scalar};
 
     use super::*;
 
     static MIGRATOR: Migrator = sqlx::migrate!("./src/facts/migrations");
 
-    async fn setup() -> AnyPool {
-        install_default_drivers();
-        let pool = AnyPoolOptions::new()
-            .max_connections(1)
-            .connect("sqlite::memory:")
+    async fn setup() -> PgPool {
+        let pool = PgPoolOptions::new()
+            .connect("postgres://postgres:postgres@localhost:5432")
             .await
             .unwrap();
 
         MIGRATOR.run(&pool).await.unwrap();
+
+        query!("TRUNCATE facts").execute(&pool).await.unwrap();
 
         pool
     }
@@ -149,21 +146,23 @@ mod tests {
     async fn get() {
         let pool = setup().await;
         let fake = Faker.fake::<Fact>();
-        let entity: SqlxEntity = fake.clone().into();
+        let entity: SqlxFact = fake.clone().into();
 
-        query("INSERT INTO facts (id, title, body) VALUES ($1, $2, $3)")
-            .bind(entity.id)
-            .bind(entity.title)
-            .bind(entity.body)
-            .execute(&pool)
-            .await
-            .unwrap();
+        let id = query_scalar!(
+            "INSERT INTO facts (title, body) VALUES ($1, $2) RETURNING id",
+            entity.title,
+            entity.body,
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
 
         let repo = SqlxFactsRepository::new(pool);
 
-        let result: Fact = repo.get(entity.id).await.unwrap();
+        let result: Fact = repo.get(id).await.unwrap();
 
-        assert_eq!(fake, result);
+        assert_eq!(fake.body(), result.body());
+        assert_eq!(fake.title(), result.title());
     }
 
     #[tokio::test]
@@ -189,21 +188,23 @@ mod tests {
     async fn get_random_from_one_element() {
         let pool = setup().await;
         let fake = Faker.fake::<Fact>();
-        let entity: SqlxEntity = fake.clone().into();
+        let entity: SqlxFact = fake.clone().into();
 
-        query("INSERT INTO facts (id, title, body) VALUES ($1, $2, $3)")
-            .bind(entity.id)
-            .bind(entity.title)
-            .bind(entity.body)
-            .execute(&pool)
-            .await
-            .unwrap();
+        query!(
+            "INSERT INTO facts (title, body) VALUES ($1, $2)",
+            entity.title,
+            entity.body,
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
 
         let repo = SqlxFactsRepository::new(pool);
 
         let result = repo.get_random().await.unwrap();
 
-        assert_eq!(fake, result);
+        assert_eq!(fake.title(), result.title());
+        assert_eq!(fake.body(), result.body());
     }
 
     #[tokio::test]
@@ -211,15 +212,16 @@ mod tests {
         let pool = setup().await;
         for _ in 0..32 {
             let fake = Faker.fake::<Fact>();
-            let entity: SqlxEntity = fake.clone().into();
+            let entity: SqlxFact = fake.clone().into();
 
-            query("INSERT INTO facts (id, title, body) VALUES ($1, $2, $3)")
-                .bind(entity.id)
-                .bind(entity.title)
-                .bind(entity.body)
-                .execute(&pool)
-                .await
-                .unwrap();
+            query!(
+                "INSERT INTO facts (title, body) VALUES ($1, $2)",
+                entity.title,
+                entity.body,
+            )
+            .execute(&pool)
+            .await
+            .unwrap();
         }
 
         let repo = SqlxFactsRepository::new(pool);

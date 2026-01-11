@@ -57,12 +57,7 @@ mod tests {
     use http_body_util::BodyExt;
     use reqwest::Method;
     use serde_json::from_slice;
-    use sqlx::{
-        any::{install_default_drivers, AnyPoolOptions},
-        migrate::Migrator,
-        query,
-        AnyPool,
-    };
+    use sqlx::{migrate::Migrator, postgres::PgPoolOptions, query, query_scalar, PgPool};
     use tower::ServiceExt;
 
     use super::*;
@@ -70,14 +65,13 @@ mod tests {
 
     static MIGRATOR: Migrator = sqlx::migrate!("./src/facts/migrations");
 
-    async fn setup() -> AnyPool {
-        install_default_drivers();
-        let pool = AnyPoolOptions::new()
-            .max_connections(1)
-            .connect("sqlite::memory:")
+    async fn setup() -> PgPool {
+        let pool = PgPoolOptions::new()
+            .connect("postgres://postgres:postgres@localhost:5432")
             .await
             .unwrap();
 
+        query!("TRUNCATE facts").execute(&pool).await.unwrap();
         MIGRATOR.run(&pool).await.unwrap();
 
         pool
@@ -89,13 +83,14 @@ mod tests {
         let entity = Faker.fake::<Fact>();
         let pool = setup().await;
 
-        query("INSERT INTO facts (id, title, body) VALUES ($1, $2, $3)")
-            .bind(Into::<i32>::into(entity.id()))
-            .bind(Into::<String>::into(entity.title().to_owned()))
-            .bind(Into::<String>::into(entity.body().to_owned()))
-            .execute(&pool)
-            .await
-            .unwrap();
+        let id = query_scalar!(
+            "INSERT INTO facts (title, body) VALUES ($1, $2) RETURNING id",
+            Into::<String>::into(entity.title().to_owned()),
+            Into::<String>::into(entity.body().to_owned())
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
 
         let state = AppState {
             facts: Arc::new(SqlxFactsRepository::new(pool)),
@@ -106,7 +101,7 @@ mod tests {
             .oneshot(
                 Request::builder()
                     .method(Method::GET)
-                    .uri(format!("/{}", entity.id()))
+                    .uri(format!("/{id}"))
                     .body(Body::empty())
                     .unwrap(),
             )
@@ -118,11 +113,10 @@ mod tests {
         let response =
             from_slice::<HttpEntity>(&raw_response.into_body().collect().await.unwrap().to_bytes())
                 .unwrap();
+        let result = Fact::new(response.id(), response.title(), response.body()).unwrap();
 
-        assert_eq!(
-            entity,
-            Fact::new(response.id(), response.title(), response.body()).unwrap()
-        );
+        assert_eq!(entity.body(), result.body());
+        assert_eq!(entity.title(), result.title());
     }
 
     #[tokio::test]
@@ -158,13 +152,14 @@ mod tests {
         for _ in 0..10 {
             let entity = Faker.fake::<Fact>();
 
-            query("INSERT INTO facts (id, title, body) VALUES ($1, $2, $3)")
-                .bind(Into::<i32>::into(entity.id()))
-                .bind(Into::<String>::into(entity.title().to_owned()))
-                .bind(Into::<String>::into(entity.body().to_owned()))
-                .execute(&pool)
-                .await
-                .unwrap();
+            query!(
+                "INSERT INTO facts (title, body) VALUES ($1, $2)",
+                Into::<String>::into(entity.title().to_owned()),
+                Into::<String>::into(entity.body().to_owned())
+            )
+            .execute(&pool)
+            .await
+            .unwrap();
         }
 
         let state = AppState {
@@ -219,13 +214,14 @@ mod tests {
         let pool = setup().await;
         let entity = Faker.fake::<Fact>();
 
-        query("INSERT INTO facts (id, title, body) VALUES ($1, $2, $3);")
-            .bind(Into::<i32>::into(entity.id()))
-            .bind(Into::<String>::into(entity.title().to_owned()))
-            .bind(Into::<String>::into(entity.body().to_owned()))
-            .execute(&pool)
-            .await
-            .unwrap();
+        query!(
+            "INSERT INTO facts (title, body) VALUES ($1, $2)",
+            Into::<String>::into(entity.title().to_owned()),
+            Into::<String>::into(entity.body().to_owned())
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
 
         let state = AppState {
             facts: Arc::new(SqlxFactsRepository::new(pool)),

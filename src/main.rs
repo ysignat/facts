@@ -4,7 +4,7 @@ use axum::{response::Html, routing::get, Router};
 use clap::Parser;
 use config::{Config, LogFormat, StorageType};
 use facts::{AppRouter, AppState, MockedFactsRepository, SqlxFactsRepository};
-use sqlx::any::{install_default_drivers, AnyPoolOptions};
+use sqlx::postgres::PgPoolOptions;
 use tokio::net::TcpListener;
 use tower_http::trace::TraceLayer;
 use tracing::{error, info};
@@ -55,11 +55,8 @@ async fn main() {
             StorageType::Sqlx => {
                 info!(target : TRACING_STARTUP_TARGET, "Using SqlxRepository");
 
-                info!(target : TRACING_STARTUP_TARGET, "Installing drivers");
-                install_default_drivers();
-
                 info!(target : TRACING_STARTUP_TARGET, "Creating pool for {:?}", &args.storage.storage_dsn);
-                let pool = AnyPoolOptions::default()
+                let pool = PgPoolOptions::default()
                     .connect(&args.storage.storage_dsn)
                     .await
                     .inspect_err(|err| {
