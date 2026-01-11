@@ -13,6 +13,8 @@ pub struct Config {
     pub logging: Logging,
     #[command(flatten)]
     pub storage: Storage,
+    #[command(flatten)]
+    pub authentication: Authentication,
 }
 
 #[derive(Args, Clone, Debug)]
@@ -52,4 +54,10 @@ pub struct Storage {
     pub storage_type: StorageType,
     #[arg(long, env, default_value = "sqlite://data/sqlite.db", value_enum)]
     pub storage_dsn: String,
+}
+
+#[derive(Args, Clone, Debug)]
+pub struct Authentication {
+    #[arg(long, env)]
+    pub password_hash: String,
 }

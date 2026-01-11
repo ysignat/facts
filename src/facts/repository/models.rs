@@ -48,12 +48,12 @@ impl From<FactBodyError> for FactError {
 }
 
 impl Fact {
-    pub fn new(id: i32, title: &str, body: &str) -> Result<Self, FactError> {
-        let id = FactId::new(id)?;
-        let title = FactTitle::new(title)?;
-        let body = FactBody::new(body)?;
-
-        Ok(Self { id, title, body })
+    pub fn new(id: FactId, title: &FactTitle, body: &FactBody) -> Self {
+        Self {
+            id,
+            title: title.to_owned(),
+            body: body.to_owned(),
+        }
     }
 
     pub fn id(&self) -> FactId {
@@ -69,8 +69,8 @@ impl Fact {
     }
 }
 
-#[derive(Clone, Copy)]
-#[cfg_attr(test, derive(Eq, PartialEq, Debug))]
+#[derive(Clone, Copy, PartialEq, Debug)]
+#[cfg_attr(test, derive(Eq))]
 pub struct FactId(i32);
 
 impl From<FactId> for i32 {
@@ -201,9 +201,58 @@ impl FactBody {
     }
 }
 
+#[derive(Clone)]
+#[cfg_attr(test, derive(Dummy, Eq, PartialEq, Debug))]
+pub struct CreateFactRequest {
+    title: FactTitle,
+    body: FactBody,
+}
+
+#[derive(Error, Debug)]
+#[cfg_attr(test, derive(PartialEq))]
+pub enum CreateFactRequestError {
+    #[error("Title is invalid: {inner}")]
+    InvalidTitle { inner: String },
+    #[error("Body is invalid: {inner}")]
+    InvalidBody { inner: String },
+}
+
+impl From<FactTitleError> for CreateFactRequestError {
+    fn from(value: FactTitleError) -> Self {
+        CreateFactRequestError::InvalidTitle {
+            inner: value.to_string(),
+        }
+    }
+}
+
+impl From<FactBodyError> for CreateFactRequestError {
+    fn from(value: FactBodyError) -> Self {
+        CreateFactRequestError::InvalidBody {
+            inner: value.to_string(),
+        }
+    }
+}
+
+impl CreateFactRequest {
+    pub fn new(title: &FactTitle, body: &FactBody) -> Self {
+        Self {
+            title: title.to_owned(),
+            body: body.to_owned(),
+        }
+    }
+
+    pub fn title(&self) -> &FactTitle {
+        &self.title
+    }
+
+    pub fn body(&self) -> &FactBody {
+        &self.body
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use fake::{Fake, Faker};
+    use fake::Fake;
 
     use super::*;
 
@@ -245,47 +294,5 @@ mod tests {
             FactBody::new(&body),
             Err(FactBodyError::TooLong { length: body.len() })
         );
-    }
-
-    #[test]
-    fn good_fact() {
-        let id = Faker.fake::<FactId>().0;
-        let title = Faker.fake::<FactTitle>().0;
-        let body = Faker.fake::<FactBody>().0;
-
-        Fact::new(id, &title, &body).unwrap();
-    }
-
-    #[test]
-    fn fact_with_invalid_id() {
-        let title = Faker.fake::<FactTitle>().0;
-        let body = Faker.fake::<FactBody>().0;
-
-        assert!(matches!(
-            Fact::new(0, &title, &body),
-            Err(FactError::InvalidId { inner: _ })
-        ));
-    }
-
-    #[test]
-    fn fact_with_invalid_title() {
-        let id = Faker.fake::<FactId>().0;
-        let body = Faker.fake::<FactBody>().0;
-
-        assert!(matches!(
-            Fact::new(id, "", &body),
-            Err(FactError::InvalidTitle { inner: _ })
-        ));
-    }
-
-    #[test]
-    fn fact_with_invalid_body() {
-        let id = Faker.fake::<FactId>().0;
-        let title = Faker.fake::<FactTitle>().0;
-
-        assert!(matches!(
-            Fact::new(id, &title, ""),
-            Err(FactError::InvalidBody { inner: _ })
-        ));
     }
 }

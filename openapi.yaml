@@ -2,9 +2,6 @@ openapi: "3.0.3"
 info:
   title: Facts
   version: "0.1.0"
-  license:
-    name: MIT
-    url: https://opensource.org/license/mit
   contact:
     email: ignatovegors@gmail.com
     name: ysignat
@@ -64,6 +61,15 @@ components:
         body:
           $ref: "#/components/schemas/FactBody"
 
+    CreateFactRequest:
+      type: object
+      description: Dataset for fact creation
+      properties:
+        title:
+          $ref: "#/components/schemas/FactTitle"
+        body:
+          $ref: "#/components/schemas/FactBody"
+
     FactsList:
       type: array
       items:
@@ -78,72 +84,66 @@ components:
         $ref: "#/components/schemas/Limit"
 
 paths:
-  # /facts:
-  #   get: # TODO: admin
-  #     parameters:
-  #       - name: pagination-page
-  #         in: header
-  #         required: false
-  #         schema:
-  #           $ref: "#/components/schemas/Page"
-  #       - name: pagination-limit
-  #         in: header
-  #         required: false
-  #         schema:
-  #           $ref: "#/components/schemas/Limit"
-  #     description: List all the facts with pagination
-  #     responses:
-  #       "200":
-  #         description: OK
-  #         content:
-  #           "application/json":
-  #             schema:
-  #               $ref: "#/components/schemas/FactsList"
-  #         headers:
-  #           pagination-page:
-  #             $ref: "#/components/headers/PaginationPage"
-  #           pagination-limit:
-  #             $ref: "#/components/headers/PaginationLimit"
-  #       "400":
-  #         description: Bad Request
-  #       "403":
-  #         description: Forbidden
-  #       "422":
-  #         description: Unprocessable Content
-  #       "429":
-  #         description: Too Many Requests
-  #       "500":
-  #         description: Internal Server Error
-  #       "502":
-  #         description: Bad Gateway
-  #       "503":
-  #         description: Service Unavailable
-  #       "504":
-  #         description: Gateway Timeout
-  #   post: # TODO: admin
-  #     responses:
-  #       "200":
-  #         description: OK
-  /facts/random:
-    get:
+  /facts:
+    #   get:
+    #     parameters:
+    #       - name: pagination-page
+    #         in: header
+    #         required: false
+    #         schema:
+    #           $ref: "#/components/schemas/Page"
+    #       - name: pagination-limit
+    #         in: header
+    #         required: false
+    #         schema:
+    #           $ref: "#/components/schemas/Limit"
+    #     description: List all the facts with pagination
+    #     responses:
+    #       "200":
+    #         description: OK
+    #         content:
+    #           "application/json":
+    #             schema:
+    #               $ref: "#/components/schemas/FactsList"
+    #         headers:
+    #           pagination-page:
+    #             $ref: "#/components/headers/PaginationPage"
+    #           pagination-limit:
+    #             $ref: "#/components/headers/PaginationLimit"
+    #       "400":
+    #         description: Bad Request
+    #       "403":
+    #         description: Forbidden
+    #       "422":
+    #         description: Unprocessable Content
+    #       "429":
+    #         description: Too Many Requests
+    #       "500":
+    #         description: Internal Server Error
+    #       "502":
+    #         description: Bad Gateway
+    #       "503":
+    #         description: Service Unavailable
+    #       "504":
+    #         description: Gateway Timeout
+    post:
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              $ref: "#/components/schemas/CreateFactRequest"
       responses:
-        "200":
-          description: OK
+        "201":
+          description: Created
           content:
             "application/json":
               schema:
                 $ref: "#/components/schemas/Fact"
-        "429":
-          description: Too Many Requests
+        "422":
+          description: Unprocessable Entity
         "500":
           description: Internal Server Error
-        "502":
-          description: Bad Gateway
-        "503":
-          description: Service Unavailable
-        "504":
-          description: Gateway Timeout
-  /facts/{id}:
+  /facts/random:
     get:
       responses:
         "200":
@@ -156,21 +156,46 @@ paths:
           description: Bad Request
         "404":
           description: Not Found
-        "429":
-          description: Too Many Requests
         "500":
           description: Internal Server Error
-        "502":
-          description: Bad Gateway
-        "503":
-          description: Service Unavailable
-        "504":
-          description: Gateway Timeout
-    # put: # TODO: admin
-    #   responses:
-    #     "200":
-    #       description: OK
-    # delete: # TODO: admin
-    #   responses:
-    #     "200":
-    #       description: OK
+  /facts/{id}:
+    get:
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            $ref: "#/components/schemas/FactId"
+      responses:
+        "200":
+          description: OK
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/Fact"
+        "400":
+          description: Bad Request
+        "422":
+          description: Unprocessable Entity
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+    delete:
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            $ref: "#/components/schemas/FactId"
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "422":
+          description: Unprocessable Entity
+        "500":
+          description: Internal Server Error

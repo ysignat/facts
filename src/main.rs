@@ -70,6 +70,7 @@ async fn main() {
                 Arc::new(SqlxFactsRepository::new(pool))
             }
         },
+        auth_key: args.authentication.password_hash,
     };
 
     let router = Router::new()
@@ -97,7 +98,7 @@ r#"
                 )
             }),
         )
-        .nest("/api/facts", AppRouter::default().into())
+        .nest("/api/facts", AppRouter::new(state.clone()).into())
         .with_state(state);
     info!(target : TRACING_STARTUP_TARGET, "Created router");
 

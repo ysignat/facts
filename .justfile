@@ -1,7 +1,6 @@
 set export := true
 set dotenv-load := true
 
-PORT := '8080'
 POSTGRES_PORT := '5432'
 POSTGRES_USER := 'postgres'
 POSTGRES_PASSWORD := 'postgres'
@@ -9,6 +8,7 @@ DATABASE_EXTERNAL_DSN := 'postgres://' + POSTGRES_USER + ':' + POSTGRES_PASSWORD
 DATABASE_INTERNAL_DSN := 'postgres://' + POSTGRES_USER + ':' + POSTGRES_PASSWORD + '@postgres:' + POSTGRES_PORT
 DATABASE_URL := DATABASE_EXTERNAL_DSN
 MIGRATIONS_PATH := "./src/facts/migrations"
+PASSWORD_HASH := '$argon2i$v=19$m=16,t=2,p=1$V0hsSTM0NGliMFBqaWdqeg$B/A24H9SHPO9+ll0geym3Q' # in fact is a hashed `password` string (`dXNlcjpwYXNzd29yZA==` for basic auth)
 RUST_VERSION := `grep 'rust-version' Cargo.toml | sed 's/rust-version = \"\(.*\)\"/\1/'`
 
 default:
@@ -31,7 +31,6 @@ run:
   just up
   cargo run -- \
     --log-level 'trace' \
-    --bind-port "${PORT}" \
     --storage-dsn "${DATABASE_EXTERNAL_DSN}"
 
 down:

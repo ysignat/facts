@@ -1,8 +1,12 @@
-#[cfg(test)]
-use serde::Deserialize;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-use crate::facts::repository::Fact;
+use crate::facts::repository::{
+    CreateFactRequest,
+    CreateFactRequestError,
+    Fact,
+    FactBody,
+    FactTitle,
+};
 
 #[derive(Debug, Serialize)]
 #[cfg_attr(test, derive(Deserialize, PartialEq, Eq))]
@@ -34,5 +38,34 @@ impl From<Fact> for HttpFactResponse {
             title: value.title().to_owned().into(),
             body: value.body().to_owned().into(),
         }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+#[cfg_attr(test, derive(Serialize, PartialEq, Eq))]
+pub struct HttpCreateFactRequestBody {
+    title: String,
+    body: String,
+}
+
+#[cfg(test)]
+impl HttpCreateFactRequestBody {
+    pub fn title(&self) -> &str {
+        &self.title
+    }
+
+    pub fn body(&self) -> &str {
+        &self.body
+    }
+}
+
+impl TryFrom<HttpCreateFactRequestBody> for CreateFactRequest {
+    type Error = CreateFactRequestError;
+
+    fn try_from(value: HttpCreateFactRequestBody) -> Result<Self, Self::Error> {
+        Ok(CreateFactRequest::new(
+            &FactTitle::new(&value.title)?,
+            &FactBody::new(&value.body)?,
+        ))
     }
 }

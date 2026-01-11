@@ -3,7 +3,14 @@ use axum::{
     response::{IntoResponse, Response},
 };
 
-use crate::facts::repository::{GetFactError, GetRandomFactError};
+use crate::facts::repository::{
+    CreateFactError,
+    CreateFactRequestError,
+    DeleteFactError,
+    FactIdError,
+    GetFactError,
+    GetRandomFactError,
+};
 
 pub struct AppError {
     pub status_code: StatusCode,
@@ -13,6 +20,15 @@ pub struct AppError {
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         (self.status_code, self.details).into_response()
+    }
+}
+
+impl From<FactIdError> for AppError {
+    fn from(value: FactIdError) -> Self {
+        Self {
+            status_code: StatusCode::UNPROCESSABLE_ENTITY,
+            details: value.to_string(),
+        }
     }
 }
 
@@ -39,6 +55,42 @@ impl From<GetRandomFactError> for AppError {
 
         Self {
             status_code,
+            details: value.to_string(),
+        }
+    }
+}
+
+impl From<CreateFactError> for AppError {
+    fn from(value: CreateFactError) -> Self {
+        let status_code = match value {
+            CreateFactError::UnexpectedError { inner: _ } => StatusCode::INTERNAL_SERVER_ERROR,
+        };
+
+        Self {
+            status_code,
+            details: value.to_string(),
+        }
+    }
+}
+
+impl From<DeleteFactError> for AppError {
+    fn from(value: DeleteFactError) -> Self {
+        let status_code = match value {
+            DeleteFactError::NoSuchFact { id: _ } => StatusCode::NOT_FOUND,
+            DeleteFactError::UnexpectedError { inner: _ } => StatusCode::INTERNAL_SERVER_ERROR,
+        };
+
+        Self {
+            status_code,
+            details: value.to_string(),
+        }
+    }
+}
+
+impl From<CreateFactRequestError> for AppError {
+    fn from(value: CreateFactRequestError) -> Self {
+        Self {
+            status_code: StatusCode::UNPROCESSABLE_ENTITY,
             details: value.to_string(),
         }
     }
