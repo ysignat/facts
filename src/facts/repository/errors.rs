@@ -3,9 +3,9 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum GetFactError {
-    #[error("Entity with id '{id:?}' doesn't exist in our records")]
-    NoSuchEntity { id: i32 },
-    #[error("Something weird occured while retrieving the entity: {inner}")]
+    #[error("Fact with id '{id:?}' doesn't exist in our records")]
+    NoSuchFact { id: i32 },
+    #[error("Something weird occured while retrieving the fact: {inner}")]
     UnexpectedError { inner: String },
 }
 
@@ -14,6 +14,6 @@ pub enum GetFactError {
 pub enum GetRandomFactError {
     #[error("Collection is empty, nothing to choose")]
     Empty,
-    #[error("Something weird occured while retrieving the entity: {inner}")]
+    #[error("Something weird occured while retrieving the random fact: {inner}")]
     UnexpectedError { inner: String },
 }

@@ -19,7 +19,7 @@ impl IntoResponse for AppError {
 impl From<GetFactError> for AppError {
     fn from(value: GetFactError) -> Self {
         let status_code = match value {
-            GetFactError::NoSuchEntity { id: _ } => StatusCode::NOT_FOUND,
+            GetFactError::NoSuchFact { id: _ } => StatusCode::NOT_FOUND,
             GetFactError::UnexpectedError { inner: _ } => StatusCode::INTERNAL_SERVER_ERROR,
         };
 

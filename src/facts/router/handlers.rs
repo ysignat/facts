@@ -8,7 +8,7 @@ use axum::{
     Router,
 };
 
-use super::{dtos::HttpEntity, errors::AppError, state::AppState};
+use super::{errors::AppError, models::HttpFactResponse, state::AppState};
 
 #[derive(Default)]
 pub struct AppRouter {}
@@ -18,14 +18,14 @@ pub async fn get_fact(
     Path(id): Path<i32>,
     State(state): State<AppState>,
 ) -> Result<impl IntoResponse, AppError> {
-    let result: HttpEntity = state.facts.get(id).await?.into();
+    let result: HttpFactResponse = state.facts.get(id).await?.into();
 
     Ok((StatusCode::OK, Json(result)))
 }
 
 #[debug_handler]
 pub async fn get_random_fact(State(state): State<AppState>) -> Result<impl IntoResponse, AppError> {
-    let result: HttpEntity = state.facts.get_random().await?.into();
+    let result: HttpFactResponse = state.facts.get_random().await?.into();
 
     Ok((StatusCode::OK, Json(result)))
 }
@@ -98,9 +98,10 @@ mod tests {
 
         assert_eq!(raw_response.status(), StatusCode::OK);
 
-        let response =
-            from_slice::<HttpEntity>(&raw_response.into_body().collect().await.unwrap().to_bytes())
-                .unwrap();
+        let response = from_slice::<HttpFactResponse>(
+            &raw_response.into_body().collect().await.unwrap().to_bytes(),
+        )
+        .unwrap();
         let result = Fact::new(response.id(), response.title(), response.body()).unwrap();
 
         assert_eq!(entity.body(), result.body());
@@ -172,8 +173,10 @@ mod tests {
 
         assert_eq!(raw_response.status(), StatusCode::OK);
 
-        from_slice::<HttpEntity>(&raw_response.into_body().collect().await.unwrap().to_bytes())
-            .unwrap();
+        from_slice::<HttpFactResponse>(
+            &raw_response.into_body().collect().await.unwrap().to_bytes(),
+        )
+        .unwrap();
     }
 
     #[sqlx::test(

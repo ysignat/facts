@@ -81,7 +81,7 @@ WHERE id = $1
         .fetch_optional(&self.pool)
         .await
         .transpose()
-        .ok_or(GetFactError::NoSuchEntity { id })?
+        .ok_or(GetFactError::NoSuchFact { id })?
         .map_err(|err| GetFactError::UnexpectedError {
             inner: err.to_string(),
         })?;
@@ -161,7 +161,7 @@ mod tests {
         let id = Faker.fake();
         let result = repo.get(id).await;
 
-        assert_eq!(result, Err(GetFactError::NoSuchEntity { id }));
+        assert_eq!(result, Err(GetFactError::NoSuchFact { id }));
     }
 
     #[sqlx::test(

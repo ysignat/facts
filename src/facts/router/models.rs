@@ -6,14 +6,14 @@ use crate::facts::repository::Fact;
 
 #[derive(Debug, Serialize)]
 #[cfg_attr(test, derive(Deserialize, PartialEq, Eq))]
-pub struct HttpEntity {
+pub struct HttpFactResponse {
     id: i32,
     title: String,
     body: String,
 }
 
 #[cfg(test)]
-impl HttpEntity {
+impl HttpFactResponse {
     pub fn id(&self) -> i32 {
         self.id
     }
@@ -27,9 +27,9 @@ impl HttpEntity {
     }
 }
 
-impl From<Fact> for HttpEntity {
+impl From<Fact> for HttpFactResponse {
     fn from(value: Fact) -> Self {
-        HttpEntity {
+        HttpFactResponse {
             id: value.id().into(),
             title: value.title().to_owned().into(),
             body: value.body().to_owned().into(),
