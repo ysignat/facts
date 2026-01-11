@@ -123,28 +123,15 @@ LIMIT 1
 #[cfg(test)]
 mod tests {
     use fake::{Fake, Faker};
-    use sqlx::{migrate::Migrator, postgres::PgPoolOptions, query, query_scalar};
+    use sqlx::{query, query_scalar};
 
     use super::*;
 
-    static MIGRATOR: Migrator = sqlx::migrate!("./src/facts/migrations");
-
-    async fn setup() -> PgPool {
-        let pool = PgPoolOptions::new()
-            .connect("postgres://postgres:postgres@localhost:5432")
-            .await
-            .unwrap();
-
-        MIGRATOR.run(&pool).await.unwrap();
-
-        query!("TRUNCATE facts").execute(&pool).await.unwrap();
-
-        pool
-    }
-
-    #[tokio::test]
-    async fn get() {
-        let pool = setup().await;
+    #[sqlx::test(
+        migrations = "./src/facts/migrations",
+        fixtures(path = "fixtures", scripts("truncate_facts_table"))
+    )]
+    async fn get(pool: PgPool) {
         let fake = Faker.fake::<Fact>();
         let entity: SqlxFact = fake.clone().into();
 
@@ -165,9 +152,11 @@ mod tests {
         assert_eq!(fake.title(), result.title());
     }
 
-    #[tokio::test]
-    async fn get_non_existent() {
-        let pool = setup().await;
+    #[sqlx::test(
+        migrations = "./src/facts/migrations",
+        fixtures(path = "fixtures", scripts("truncate_facts_table"))
+    )]
+    async fn get_non_existent(pool: PgPool) {
         let repo = SqlxFactsRepository::new(pool);
         let id = Faker.fake();
         let result = repo.get(id).await;
@@ -175,18 +164,22 @@ mod tests {
         assert_eq!(result, Err(GetFactError::NoSuchEntity { id }));
     }
 
-    #[tokio::test]
-    async fn get_random_from_empty_map() {
-        let pool = setup().await;
+    #[sqlx::test(
+        migrations = "./src/facts/migrations",
+        fixtures(path = "fixtures", scripts("truncate_facts_table"))
+    )]
+    async fn get_random_from_empty_map(pool: PgPool) {
         let repo = SqlxFactsRepository::new(pool);
         let result = repo.get_random().await;
 
         assert_eq!(result, Err(GetRandomFactError::Empty));
     }
 
-    #[tokio::test]
-    async fn get_random_from_one_element() {
-        let pool = setup().await;
+    #[sqlx::test(
+        migrations = "./src/facts/migrations",
+        fixtures(path = "fixtures", scripts("truncate_facts_table"))
+    )]
+    async fn get_random_from_one_element(pool: PgPool) {
         let fake = Faker.fake::<Fact>();
         let entity: SqlxFact = fake.clone().into();
 
@@ -207,9 +200,11 @@ mod tests {
         assert_eq!(fake.body(), result.body());
     }
 
-    #[tokio::test]
-    async fn get_random() {
-        let pool = setup().await;
+    #[sqlx::test(
+        migrations = "./src/facts/migrations",
+        fixtures(path = "fixtures", scripts("truncate_facts_table"))
+    )]
+    async fn get_random(pool: PgPool) {
         for _ in 0..32 {
             let fake = Faker.fake::<Fact>();
             let entity: SqlxFact = fake.clone().into();

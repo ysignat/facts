@@ -57,31 +57,19 @@ mod tests {
     use http_body_util::BodyExt;
     use reqwest::Method;
     use serde_json::from_slice;
-    use sqlx::{migrate::Migrator, postgres::PgPoolOptions, query, query_scalar, PgPool};
+    use sqlx::{query, query_scalar, PgPool};
     use tower::ServiceExt;
 
     use super::*;
     use crate::facts::{repository::Fact, SqlxFactsRepository};
 
-    static MIGRATOR: Migrator = sqlx::migrate!("./src/facts/migrations");
-
-    async fn setup() -> PgPool {
-        let pool = PgPoolOptions::new()
-            .connect("postgres://postgres:postgres@localhost:5432")
-            .await
-            .unwrap();
-
-        query!("TRUNCATE facts").execute(&pool).await.unwrap();
-        MIGRATOR.run(&pool).await.unwrap();
-
-        pool
-    }
-
-    #[tokio::test]
-    async fn get_ok() {
+    #[sqlx::test(
+        migrations = "./src/facts/migrations",
+        fixtures(path = "fixtures", scripts("truncate_facts_table"))
+    )]
+    async fn get_ok(pool: PgPool) {
         let router: Router<AppState> = AppRouter::default().into();
         let entity = Faker.fake::<Fact>();
-        let pool = setup().await;
 
         let id = query_scalar!(
             "INSERT INTO facts (title, body) VALUES ($1, $2) RETURNING id",
@@ -119,11 +107,13 @@ mod tests {
         assert_eq!(entity.title(), result.title());
     }
 
-    #[tokio::test]
-    async fn get_non_existent() {
+    #[sqlx::test(
+        migrations = "./src/facts/migrations",
+        fixtures(path = "fixtures", scripts("truncate_facts_table"))
+    )]
+    async fn get_non_existent(pool: PgPool) {
         let router: Router<AppState> = AppRouter::default().into();
         let id: i32 = Faker.fake();
-        let pool = setup().await;
 
         let state = AppState {
             facts: Arc::new(SqlxFactsRepository::new(pool)),
@@ -144,10 +134,12 @@ mod tests {
         assert_eq!(raw_response.status(), StatusCode::NOT_FOUND);
     }
 
-    #[tokio::test]
-    async fn get_random() {
+    #[sqlx::test(
+        migrations = "./src/facts/migrations",
+        fixtures(path = "fixtures", scripts("truncate_facts_table"))
+    )]
+    async fn get_random(pool: PgPool) {
         let router: Router<AppState> = AppRouter::default().into();
-        let pool = setup().await;
 
         for _ in 0..10 {
             let entity = Faker.fake::<Fact>();
@@ -184,10 +176,12 @@ mod tests {
             .unwrap();
     }
 
-    #[tokio::test]
-    async fn get_random_from_empty() {
+    #[sqlx::test(
+        migrations = "./src/facts/migrations",
+        fixtures(path = "fixtures", scripts("truncate_facts_table"))
+    )]
+    async fn get_random_from_empty(pool: PgPool) {
         let router: Router<AppState> = AppRouter::default().into();
-        let pool = setup().await;
 
         let state = AppState {
             facts: Arc::new(SqlxFactsRepository::new(pool)),
@@ -208,10 +202,12 @@ mod tests {
         assert_eq!(raw_response.status(), StatusCode::NOT_FOUND);
     }
 
-    #[tokio::test]
-    async fn healthcheck() {
+    #[sqlx::test(
+        migrations = "./src/facts/migrations",
+        fixtures(path = "fixtures", scripts("truncate_facts_table"))
+    )]
+    async fn healthcheck(pool: PgPool) {
         let router: Router<AppState> = AppRouter::default().into();
-        let pool = setup().await;
         let entity = Faker.fake::<Fact>();
 
         query!(
