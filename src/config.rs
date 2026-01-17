@@ -52,7 +52,7 @@ pub enum StorageType {
 pub struct Storage {
     #[arg(long, env, default_value_t, value_enum)]
     pub storage_type: StorageType,
-    #[arg(long, env, default_value = "sqlite://data/sqlite.db", value_enum)]
+    #[arg(long, env, default_value = String::new(), value_enum)]
     pub storage_dsn: String,
 }
 
